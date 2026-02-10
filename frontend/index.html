@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solar Tracker</title>
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Solar Tracker">
+    <link rel="apple-touch-icon" href="/static/icon-192.svg">
+    <!-- Android PWA -->
+    <meta name="theme-color" content="#f59e0b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .tab-active { border-bottom: 3px solid #f59e0b; color: #f59e0b; }
+        .stat-positive { color: #16a34a; }
+        .stat-negative { color: #dc2626; }
+        @supports (padding-top: env(safe-area-inset-top)) {
+            body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+        }
+        html { -webkit-overflow-scrolling: touch; }
+        .chart-container { position: relative; height: 300px; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-95 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4">
+            <div class="text-center mb-6">
+                <svg class="w-16 h-16 text-amber-500 mx-auto mb-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
+                </svg>
+                <h2 class="text-2xl font-bold text-gray-800">Solar Tracker</h2>
+                <p class="text-sm text-gray-500 mt-1">Bitte PIN eingeben</p>
+            </div>
+            <form id="login-form">
+                <input type="password" id="login-pin" inputmode="numeric" pattern="[0-9]*"
+                       placeholder="PIN" maxlength="20" autocomplete="current-password"
+                       class="w-full text-center text-2xl tracking-widest border-2 border-gray-200 rounded-lg px-4 py-3 mb-2 focus:border-amber-500 focus:outline-none">
+                <div id="login-error" class="text-red-500 text-sm text-center mb-3 hidden"></div>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg font-medium text-lg">
+                    Anmelden
+                </button>
+            </form>
+            <p class="text-xs text-gray-400 text-center mt-4">Standard-PIN: 1234</p>
+        </div>
+    </div>
+
+    <div id="app" class="max-w-4xl mx-auto px-4 py-4 hidden">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <svg class="w-8 h-8 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
+                </svg>
+                <h1 class="text-xl font-bold text-gray-800">Solar Tracker</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <select id="year-filter" class="border rounded px-2 py-1 text-sm">
+                    <option value="all">Alle Jahre</option>
+                </select>
+                <button id="logout-btn" class="text-gray-400 hover:text-red-500 transition-colors" title="Abmelden">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="bg-white rounded-lg shadow p-3">
+                <div class="text-xs text-gray-500">Gesamtertrag</div>
+                <div id="total-yield" class="text-lg font-bold text-amber-600">0 kWh</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-3">
+                <div class="text-xs text-gray-500">Einnahmen</div>
+                <div id="total-revenue" class="text-lg font-bold text-green-600">0 EUR</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-3">
+                <div class="text-xs text-gray-500">Ertrag/KWp</div>
+                <div id="yield-per-kwp" class="text-lg font-bold">0 kWh</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-3">
+                <div class="text-xs text-gray-500">Soll-Erfüllung</div>
+                <div id="performance" class="text-lg font-bold">0%</div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-200 mb-4 overflow-x-auto">
+            <button class="tab-btn tab-active px-4 py-2 text-sm font-medium whitespace-nowrap" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="eingabe">Eingabe</button>
+            <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="charts">Diagramme</button>
+            <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="vergleich">Vergleich</button>
+            <button class="tab-btn px-4 py-2 text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="settings">Einstellungen</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content">
+            <div class="grid md:grid-cols-2 gap-4">
+                <!-- Yearly Chart -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-medium mb-2">Jahresertrag</h3>
+                    <div class="chart-container">
+                        <canvas id="yearly-chart"></canvas>
+                    </div>
+                </div>
+                <!-- Monthly Chart -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-medium mb-2">Monatsertrag (aktuelles Jahr)</h3>
+                    <div class="chart-container">
+                        <canvas id="monthly-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Yearly Stats Table -->
+            <div class="bg-white rounded-lg shadow p-4 mt-4">
+                <h3 class="font-medium mb-2">Jahresübersicht</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2">Jahr</th>
+                                <th class="text-right py-2">Ertrag</th>
+                                <th class="text-right py-2">kWh/KWp</th>
+                                <th class="text-right py-2">Einnahmen</th>
+                                <th class="text-right py-2">Soll %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="yearly-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Eingabe Tab -->
+        <div id="tab-eingabe" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow p-4 mb-4">
+                <h3 class="font-medium mb-4">Neuen Zählerstand eintragen</h3>
+                <form id="reading-form" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs text-gray-500">Datum</label>
+                            <input type="date" id="reading-date" required class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Zählerstand (kWh)</label>
+                            <input type="number" id="meter-reading" step="0.01" required placeholder="z.B. 98330.3" class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded font-medium">
+                        Speichern
+                    </button>
+                </form>
+            </div>
+
+            <!-- Readings List -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-medium">Einträge</h3>
+                    <span id="readings-count" class="text-xs text-gray-500">0 Einträge</span>
+                </div>
+                <div id="readings-list" class="space-y-2 max-h-96 overflow-y-auto">
+                    <p class="text-gray-400 text-sm text-center py-4">Keine Einträge</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Tab -->
+        <div id="tab-charts" class="tab-content hidden">
+            <div class="space-y-4">
+                <!-- Cumulative Chart -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-medium mb-2">Kumulierter Ertrag</h3>
+                    <div class="chart-container">
+                        <canvas id="cumulative-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Year Comparison -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-medium mb-2">Jahresvergleich nach Monat</h3>
+                    <div class="chart-container">
+                        <canvas id="year-comparison-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vergleich Tab -->
+        <div id="tab-vergleich" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow p-4 mb-4">
+                <h3 class="font-medium mb-2">Vergleich mit Referenzwerten</h3>
+                <p class="text-sm text-gray-600 mb-4">Vergleich deiner Anlage mit PVGIS-Referenzwerten für deinen Standort.</p>
+
+                <button id="fetch-pvgis" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm mb-4">
+                    PVGIS-Daten abrufen
+                </button>
+
+                <div id="pvgis-loading" class="hidden text-center py-4">
+                    <div class="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+                    <p class="text-sm text-gray-500 mt-2">Lade Referenzdaten...</p>
+                </div>
+
+                <div id="pvgis-result" class="hidden">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="bg-gray-50 rounded p-3">
+                            <div class="text-xs text-gray-500">PVGIS Erwartung</div>
+                            <div id="pvgis-expected" class="text-lg font-bold">- kWh/Jahr</div>
+                        </div>
+                        <div class="bg-gray-50 rounded p-3">
+                            <div class="text-xs text-gray-500">Dein Durchschnitt</div>
+                            <div id="your-average" class="text-lg font-bold">- kWh/Jahr</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="reference-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regional Reference -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="font-medium mb-2">Typische Erträge Deutschland</h3>
+                <div id="regional-data" class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span>Norddeutschland</span>
+                        <span class="font-medium">~850 kWh/KWp</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span>Mitteldeutschland</span>
+                        <span class="font-medium">~950 kWh/KWp</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span>Süddeutschland</span>
+                        <span class="font-medium">~1050 kWh/KWp</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span>Alpenregion</span>
+                        <span class="font-medium">~1100 kWh/KWp</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="font-medium mb-4">Anlagen-Einstellungen</h3>
+                <form id="settings-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500">Anlagengröße (KWp)</label>
+                            <input type="number" id="setting-plant-size" step="0.01" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Vergütung (EUR/kWh)</label>
+                            <input type="number" id="setting-price" step="0.001" class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500">Soll-Ertrag (kWh/KWp/Jahr)</label>
+                            <input type="number" id="setting-expected-yield" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Initial-Zählerstand</label>
+                            <input type="number" id="setting-initial-reading" step="0.01" class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Startdatum</label>
+                        <input type="date" id="setting-start-date" class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Standort</label>
+                        <input type="text" id="setting-address" placeholder="Adresse oder Stadt" class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500">Breitengrad</label>
+                            <input type="number" id="setting-latitude" step="0.0001" class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Längengrad</label>
+                            <input type="number" id="setting-longitude" step="0.0001" class="w-full border rounded px-3 py-2">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded font-medium">
+                        Einstellungen speichern
+                    </button>
+                </form>
+            </div>
+
+            <!-- Change PIN Section -->
+            <div class="bg-white rounded-lg shadow p-4 mt-4">
+                <h3 class="font-medium mb-4">PIN ändern</h3>
+                <form id="change-pin-form" class="space-y-3">
+                    <div>
+                        <label class="text-xs text-gray-500">Aktuelle PIN</label>
+                        <input type="password" id="current-pin" inputmode="numeric" required class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Neue PIN (min. 4 Zeichen)</label>
+                        <input type="password" id="new-pin" inputmode="numeric" required minlength="4" class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Neue PIN bestätigen</label>
+                        <input type="password" id="confirm-pin" inputmode="numeric" required minlength="4" class="w-full border rounded px-3 py-2">
+                    </div>
+                    <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded font-medium">
+                        PIN ändern
+                    </button>
+                </form>
+            </div>
+
+            <!-- Import Section -->
+            <div class="bg-white rounded-lg shadow p-4 mt-4">
+                <h3 class="font-medium mb-4">Daten importieren</h3>
+                <div id="import-drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-amber-400">
+                    <svg class="w-10 h-10 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="text-gray-600 text-sm">Excel-Datei hier ablegen oder klicken</p>
+                    <input type="file" id="import-file" accept=".xlsx,.xls" class="hidden">
+                </div>
+                <div id="import-status" class="mt-2 text-sm text-center hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/charts.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+    </script>
+</body>
+</html>
