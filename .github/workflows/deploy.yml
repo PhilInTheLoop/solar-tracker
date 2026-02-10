@@ -8,31 +8,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup and Deploy
+      - name: Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
-          command_timeout: 5m
-          script: |
-            echo "=== Starting deployment ==="
-            systemctl stop solar-tracker 2>/dev/null || true
-            rm -rf /opt/solar-tracker
-            git clone https://github.com/PhilInTheLoop/solar-tracker.git /opt/solar-tracker
-            cd /opt/solar-tracker
-            python3 -m venv venv
-            source venv/bin/activate
-            pip install -r requirements.txt
-            chmod +x deploy.sh
-            echo "W1VuaXRdCkRlc2NyaXB0aW9uPVNvbGFyIFRyYWNrZXIgQXBwCkFmdGVyPW5ldHdvcmsudGFyZ2V0CgpbU2VydmljZV0KVHlwZT1zaW1wbGUKVXNlcj1yb290CldvcmtpbmdEaXJlY3Rvcnk9L29wdC9zb2xhci10cmFja2VyCkV4ZWNTdGFydD0vb3B0L3NvbGFyLXRyYWNrZXIvdmVudi9iaW4vdXZpY29ybiBiYWNrZW5kLm1haW46YXBwIC0taG9zdCAxMjcuMC4wLjEgLS1wb3J0IDgwMDMKUmVzdGFydD1hbHdheXMKUmVzdGFydFNlYz01CgpbSW5zdGFsbF0KV2FudGVkQnk9bXVsdGktdXNlci50YXJnZXQK" | base64 -d > /etc/systemd/system/solar-tracker.service
-            systemctl daemon-reload
-            systemctl enable solar-tracker
-            systemctl start solar-tracker
-            echo "c2VydmVyIHsKICAgIGxpc3RlbiA4MDsKICAgIHNlcnZlcl9uYW1lIHNvbGFyLnRoaWVsLnBoOwoKICAgIGxvY2F0aW9uIC8gewogICAgICAgIHByb3h5X3Bhc3MgaHR0cDovLzEyNy4wLjAuMTo4MDAzOwogICAgICAgIHByb3h5X3NldF9oZWFkZXIgSG9zdCAkaG9zdDsKICAgICAgICBwcm94eV9zZXRfaGVhZGVyIFgtUmVhbC1JUCAkcmVtb3RlX2FkZHI7CiAgICAgICAgcHJveHlfc2V0X2hlYWRlciBYLUZvcndhcmRlZC1Gb3IgJHByb3h5X2FkZF94X2ZvcndhcmRlZF9mb3I7CiAgICAgICAgcHJveHlfc2V0X2hlYWRlciBYLUZvcndhcmRlZC1Qcm90byAkc2NoZW1lOwogICAgICAgIHByb3h5X3NldF9oZWFkZXIgWC1Gb3J3YXJkZWQtSG9zdCAkaG9zdDsKICAgIH0KfQo=" | base64 -d > /etc/nginx/sites-available/solar-tracker
-            ln -sf /etc/nginx/sites-available/solar-tracker /etc/nginx/sites-enabled/
-            nginx -t
-            systemctl reload nginx
-            sleep 2
-            curl -sf http://127.0.0.1:8003/api/health
-            echo "=== Deployment successful ==="
+          script: /opt/solar-tracker/deploy.sh
