@@ -7,22 +7,15 @@ jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
-      - name: Diagnose and fix nginx config
+      - name: Remove IP from fxmonitor and set solar-tracker as default
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            echo "=== sites-enabled ==="
-            ls -la /etc/nginx/sites-enabled/
-            echo "=== conf.d ==="
-            ls -la /etc/nginx/conf.d/
-            echo "=== all default_server directives ==="
-            grep -r "default_server" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null || echo "none found"
-            echo "=== all server_name directives ==="
-            grep -r "server_name" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null || echo "none found"
-            echo "=== solar-tracker config ==="
-            cat /etc/nginx/sites-available/solar-tracker
-            echo "=== each enabled site config ==="
-            for f in /etc/nginx/sites-enabled/*; do echo "--- $f ---"; cat "$f"; echo; done
+            sed -i 's/ 87\.106\.30\.14//g' /etc/nginx/sites-available/fxmonitor
+            echo "=== fxmonitor after fix ==="
+            grep server_name /etc/nginx/sites-available/fxmonitor
+            nginx -t && systemctl reload nginx
+            echo "Done - IP removed from fxmonitor, solar-tracker is default_server"
