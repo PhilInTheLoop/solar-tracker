@@ -17,83 +17,27 @@ jobs:
           script_stop: true
           script: |
             set -e
-
             APP_DIR="/opt/solar-tracker"
-            REPO_URL="https://github.com/PhilInTheLoop/solar-tracker.git"
-
-            # === INITIAL SETUP (runs only if app not yet installed) ===
-            if [ ! -d "$APP_DIR" ]; then
+            if [ ! -f "$APP_DIR/venv/bin/uvicorn" ]; then
               echo "=== First-time setup ==="
-
-              # Clone repository
-              git clone "$REPO_URL" "$APP_DIR"
+              rm -rf "$APP_DIR"
+              git clone https://github.com/PhilInTheLoop/solar-tracker.git "$APP_DIR"
               cd "$APP_DIR"
-
-              # Create virtual environment
               python3 -m venv venv
               source venv/bin/activate
               pip install -r requirements.txt
-
               chmod +x deploy.sh
-
-              # Create systemd service
-              cat > /etc/systemd/system/solar-tracker.service << 'SVCEOF'
-            [Unit]
-            Description=Solar Tracker App
-            After=network.target
-
-            [Service]
-            Type=simple
-            User=root
-            WorkingDirectory=/opt/solar-tracker
-            ExecStart=/opt/solar-tracker/venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8003
-            Restart=always
-            RestartSec=5
-
-            [Install]
-            WantedBy=multi-user.target
-            SVCEOF
-
+              echo "W1VuaXRdCkRlc2NyaXB0aW9uPVNvbGFyIFRyYWNrZXIgQXBwCkFmdGVyPW5ldHdvcmsudGFyZ2V0CgpbU2VydmljZV0KVHlwZT1zaW1wbGUKVXNlcj1yb290CldvcmtpbmdEaXJlY3Rvcnk9L29wdC9zb2xhci10cmFja2VyCkV4ZWNTdGFydD0vb3B0L3NvbGFyLXRyYWNrZXIvdmVudi9iaW4vdXZpY29ybiBiYWNrZW5kLm1haW46YXBwIC0taG9zdCAxMjcuMC4wLjEgLS1wb3J0IDgwMDMKUmVzdGFydD1hbHdheXMKUmVzdGFydFNlYz01CgpbSW5zdGFsbF0KV2FudGVkQnk9bXVsdGktdXNlci50YXJnZXQK" | base64 -d > /etc/systemd/system/solar-tracker.service
               systemctl daemon-reload
               systemctl enable solar-tracker
-
-              # Create nginx config
-              cat > /etc/nginx/sites-available/solar-tracker << 'NGXEOF'
-            server {
-                listen 80;
-                server_name solar.thiel.ph;
-
-                location / {
-                    proxy_pass http://127.0.0.1:8003;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                    proxy_set_header X-Forwarded-Host $host;
-                }
-            }
-            NGXEOF
-
+              echo "c2VydmVyIHsKICAgIGxpc3RlbiA4MDsKICAgIHNlcnZlcl9uYW1lIHNvbGFyLnRoaWVsLnBoOwoKICAgIGxvY2F0aW9uIC8gewogICAgICAgIHByb3h5X3Bhc3MgaHR0cDovLzEyNy4wLjAuMTo4MDAzOwogICAgICAgIHByb3h5X3NldF9oZWFkZXIgSG9zdCAkaG9zdDsKICAgICAgICBwcm94eV9zZXRfaGVhZGVyIFgtUmVhbC1JUCAkcmVtb3RlX2FkZHI7CiAgICAgICAgcHJveHlfc2V0X2hlYWRlciBYLUZvcndhcmRlZC1Gb3IgJHByb3h5X2FkZF94X2ZvcndhcmRlZF9mb3I7CiAgICAgICAgcHJveHlfc2V0X2hlYWRlciBYLUZvcndhcmRlZC1Qcm90byAkc2NoZW1lOwogICAgICAgIHByb3h5X3NldF9oZWFkZXIgWC1Gb3J3YXJkZWQtSG9zdCAkaG9zdDsKICAgIH0KfQo=" | base64 -d > /etc/nginx/sites-available/solar-tracker
               ln -sf /etc/nginx/sites-available/solar-tracker /etc/nginx/sites-enabled/
               nginx -t && systemctl reload nginx
-
-              # Start service
               systemctl start solar-tracker
               echo "=== Initial setup complete ==="
-
             else
-              # === REGULAR DEPLOYMENT ===
               echo "=== Deploying update ==="
               /opt/solar-tracker/deploy.sh
             fi
-
-            # Health check
             sleep 2
-            if curl -sf http://127.0.0.1:8003/api/health; then
-              echo ""
-              echo "=== Deployment successful! ==="
-            else
-              echo "=== Health check failed ==="
-              systemctl status solar-tracker --no-pager || true
-              exit 1
-            fi
+            curl -sf http://127.0.0.1:8003/api/health && echo " - Health check passed!" || (echo "Health check failed!" && systemctl status solar-tracker --no-pager && exit 1)
