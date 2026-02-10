@@ -1,11 +1,11 @@
 # Solar Tracker Deployment
 
 Deployed to **solar.thiel.ph** on IONOS server (87.106.30.14).
-Auto-deploys from GitLab on push to `main`.
+Auto-deploys from GitHub on push to `main`.
 
 ## Automatic Deployment
 
-Push to `main` branch triggers automatic deployment via GitLab CI/CD.
+Push to `main` branch triggers automatic deployment via GitHub Actions.
 
 ## Manual Deployment
 
@@ -20,7 +20,7 @@ SSH into server and run:
 
 ```bash
 cd /opt
-git clone https://gitlab.com/YOUR_USERNAME/solar-tracker.git
+git clone https://github.com/PhilInTheLoop/solar-tracker.git
 cd solar-tracker
 ```
 
@@ -125,7 +125,7 @@ Run these commands on the server to set everything up in one go:
 ```bash
 # Clone and setup
 cd /opt
-git clone https://gitlab.com/YOUR_USERNAME/solar-tracker.git
+git clone https://github.com/PhilInTheLoop/solar-tracker.git
 cd solar-tracker
 python3 -m venv venv
 source venv/bin/activate
@@ -191,9 +191,9 @@ nginx -t && systemctl reload nginx
 curl http://127.0.0.1:8003/api/health
 ```
 
-## GitLab CI/CD Variables
+## GitHub Actions Secrets
 
-Set these in GitLab > Settings > CI/CD > Variables (same as fx-unified):
+Set these in GitHub > Settings > Secrets and variables > Actions:
 
 | Variable | Value |
 |----------|-------|
